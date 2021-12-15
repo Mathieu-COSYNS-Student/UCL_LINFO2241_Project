@@ -4,6 +4,8 @@ import common.CryptoUtils;
 import common.Hash;
 import common.Request;
 import common.Response;
+import server.Receiver;
+
 import java.io.File;
 import java.io.IOException;
 import java.net.Socket;
@@ -11,12 +13,16 @@ import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
+import java.util.ArrayList;
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 
 public class ClientMain {
+
+  private static ArrayList<Sender> connections = new ArrayList<>();
+
 
   public static void main(String[] args) {
     try {
@@ -31,26 +37,45 @@ public class ClientMain {
       System.out.println("Input file length: " + inputFile.length());
       System.out.println("Encrypted file length: " + encryptedFile.length());
 
-      // Creating socket to connect to server (in this example it runs on the localhost on port 3333)
-      Socket socket = new Socket("localhost", 3333);
-
       // SEND THE PROCESSING INFORMATION AND FILE
       byte[] hashPwd = Hash.sha1(password);
       int pwdLength = password.length();
       long fileLength = encryptedFile.length();
-
-      Request request = new Request(hashPwd, pwdLength, fileLength, encryptedFile);
-      Sender sender = new Sender(request, socket);
-      sender.start();
-      sender.join();
-
-      Response response = sender.getResponse();
-      if (response != null) {
-        System.out.println("Decrypted file length from the server response: " + response.getFileLength());
-        System.out.println("Decrypted file length: " + response.getFile().length());
-      } else {
-        System.out.println("No response from the server");
+      // Creating socket to connect to server (in this example it runs on the localhost on port 3333)
+      Sender sender = null;
+      for (int i = 0; i < 100; i++) {
+        Socket socket = new Socket("localhost", 3333);
+        Request request = new Request(hashPwd, pwdLength, fileLength, encryptedFile);
+        sender = new Sender(request, socket);
+        connections.add(sender);
+        sender.start();
       }
+      for (Sender connection:connections) {
+        connection.join();
+        Response response = connection.getResponse();
+        if (response != null) {
+          System.out.println("Decrypted file length from the server response: " + response.getFileLength());
+          System.out.println("Decrypted file length: " + response.getFile().length());
+        } else {
+          System.out.println("No response from the server");
+        }
+      }
+
+//      Socket socket = new Socket("localhost", 3333);
+//      Socket socket2 = new Socket("localhost", 3333);
+//      Socket socket3 = new Socket("localhost", 3333);
+//      Request request = new Request(hashPwd, pwdLength, fileLength, encryptedFile);
+//      Sender sender = new Sender(request, socket);
+//      Sender sender2 = new Sender(request, socket2);
+//      Sender sender3 = new Sender(request, socket3);
+//
+//      sender.start();
+//      sender2.start();
+//      sender3.start();
+//      sender.join();
+//      sender2.join();
+//      sender3.join();
+
 
     } catch (NoSuchAlgorithmException | InvalidKeySpecException | InvalidAlgorithmParameterException
         | NoSuchPaddingException | IllegalBlockSizeException | IOException | BadPaddingException
@@ -60,3 +85,4 @@ public class ClientMain {
 
   }
 }
+
