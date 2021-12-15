@@ -61,22 +61,6 @@ public class ClientMain {
         }
       }
 
-//      Socket socket = new Socket("localhost", 3333);
-//      Socket socket2 = new Socket("localhost", 3333);
-//      Socket socket3 = new Socket("localhost", 3333);
-//      Request request = new Request(hashPwd, pwdLength, fileLength, encryptedFile);
-//      Sender sender = new Sender(request, socket);
-//      Sender sender2 = new Sender(request, socket2);
-//      Sender sender3 = new Sender(request, socket3);
-//
-//      sender.start();
-//      sender2.start();
-//      sender3.start();
-//      sender.join();
-//      sender2.join();
-//      sender3.join();
-
-
     } catch (NoSuchAlgorithmException | InvalidKeySpecException | InvalidAlgorithmParameterException
         | NoSuchPaddingException | IllegalBlockSizeException | IOException | BadPaddingException
         | InvalidKeyException | InterruptedException e) {
