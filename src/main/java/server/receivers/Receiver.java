@@ -1,4 +1,4 @@
-package server;
+package server.receivers;
 
 import common.CryptoUtils;
 import common.FileManagement;
@@ -30,7 +30,7 @@ public abstract class Receiver extends Thread {
 
   @Override
   public void run() {
-    System.out.println("Connection from: " + socket);
+    System.out.println("Processing request for the connection from " + socket);
     try (
         DataOutputStream out = new DataOutputStream(socket.getOutputStream());
         DataInputStream in = new DataInputStream(socket.getInputStream())) {
@@ -72,14 +72,14 @@ public abstract class Receiver extends Thread {
 
   private Response handleRequest(Request request) {
 
-    File decryptedFile = new File("test_file-decrypted-server.pdf");
+    File decryptedFile = new File("decrypted-server-" + System.currentTimeMillis() + ".pdf");
     long fileLength = request.getFileLength();
 
     System.out.println("Encrypted file length from the request: " + fileLength);
     System.out.println("Encrypted file length: " + request.getFile().length());
 
     String password = crackPassword(request.getPasswordHash(), request.getPasswordLength());
-    if(password != null) {
+    if (password != null) {
       SecretKey serverKey;
       try {
         serverKey = CryptoUtils.getKeyFromPassword(password);

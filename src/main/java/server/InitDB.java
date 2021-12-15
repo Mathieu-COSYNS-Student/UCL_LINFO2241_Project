@@ -1,70 +1,63 @@
 package server;
 
-import common.StringUtils;
-import java.util.Arrays;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.function.Consumer;
+import java.util.concurrent.TimeUnit;
 
 public class InitDB {
-
-  private static final int BUFFER_SIZE = 1024;
-  private static final int MAX_TREADS_CREATED = 8;
-  private static final BrutForceThread[] brutForceThreads = new BrutForceThread[MAX_TREADS_CREATED];
-  private static int treadsCount = 0;
-  private static Database database;
 
   public static void main(String[] args) {
     long startTime = System.currentTimeMillis();
 
-    database = new Database();
-    // database.initDb();
+    Database database = new Database();
+    database.initDb();
 
     System.out.println("Starting to hash passwords...");
 
-    final int[] nbInBuffer = {0};
-    String[] passwords = new String[BUFFER_SIZE];
+    ExecutorService executorService = Executors.newSingleThreadExecutor();
 
-    Consumer<Integer> fn = size -> {
-      addBrutForceThead(Arrays.copyOf(passwords, size));
-      if (treadsCount >= MAX_TREADS_CREATED) {
-        runThreads();
-        treadsCount = 0;
-      }
-    };
+    MultiThreadBrutForce multiThreadBrutForce = new MultiThreadBrutForce(results -> {
+      executorService.execute(() -> database.insertList(results));
+      return false;
+    });
 
-    for (int i = 0; i < 7; i++) {
-      StringUtils.loopAll(new StringBuilder(), i, s -> {
-        if (nbInBuffer[0] == BUFFER_SIZE) {
-          fn.accept(nbInBuffer[0]);
-          nbInBuffer[0] = 0;
+    try (InputStream in = InitDB.class.getClassLoader()
+        .getResourceAsStream("10k-most-common_filered.txt")) {
+      if (in != null) {
+        try (
+            InputStreamReader streamReader =
+                new InputStreamReader(in, StandardCharsets.UTF_8);
+            BufferedReader reader = new BufferedReader(streamReader)) {
+
+          ArrayList<String> dictionary = new ArrayList<>();
+
+          String word;
+          while ((word = reader.readLine()) != null) {
+            dictionary.add(word);
+          }
+
+          multiThreadBrutForce.crack(dictionary.iterator());
         }
-        passwords[nbInBuffer[0]] = s;
-        nbInBuffer[0]++;
-        return null;
-      });
+      }
+    } catch (IOException e) {
+      e.printStackTrace();
     }
 
-    fn.accept(nbInBuffer[0]);
+    try {
+      executorService.shutdown();
+      //noinspection ResultOfMethodCallIgnored
+      executorService.awaitTermination(1, TimeUnit.DAYS);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
 
     double delta = (System.currentTimeMillis() - startTime) / 1000.0;
     System.out.println("InitDb finished after " + delta + " seconds");
   }
-
-  private static void addBrutForceThead(String[] passwords) {
-    brutForceThreads[treadsCount] = new BrutForceThread(passwords);
-    treadsCount++;
-  }
-
-  private static void runThreads() {
-    ExecutorService pool = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
-
-    for (int i = 0; i < treadsCount; i++) {
-      pool.execute(brutForceThreads[i]);
-    }
-
-    pool.shutdown();
-
-  }
-
 }
