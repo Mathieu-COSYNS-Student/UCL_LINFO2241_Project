@@ -1,5 +1,6 @@
 package server;
 
+import common.PasswordHash;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -46,41 +47,24 @@ public class Database {
     }
   }
 
-  public void insertHash(byte[] hash, String password) {
+  public void insertList(PasswordHash[] passwordsHashes) {
     try (Connection connection = getConnection()) {
-      this.insertHash(connection, hash, password);
+      this.insertList(connection, passwordsHashes);
     } catch (SQLException e) {
       System.err.println(e.getMessage());
     }
   }
 
-  private void insertHash(Connection connection, byte[] hash, String password) throws SQLException {
-    String sql = "INSERT INTO password_sha1 (sha1, password) VALUES (?, ?)";
-    try (PreparedStatement insert = connection.prepareStatement(sql)) {
-      insert.setBytes(1, hash);
-      insert.setString(2, password);
-      insert.executeUpdate();
-    }
-  }
-
-  public void insertHashList(byte[][] hashes, String[] passwords, int size) {
-    try (Connection connection = getConnection()) {
-      this.insertHashList(connection, hashes, passwords, size);
-    } catch (SQLException e) {
-      System.err.println(e.getMessage());
-    }
-  }
-
-  private void insertHashList(Connection connection, byte[][] hashes, String[] passwords, int size)
+  private void insertList(Connection connection, PasswordHash[] passwordsHashes)
       throws SQLException {
     StringBuilder sql = new StringBuilder(
         "INSERT OR IGNORE INTO password_sha1 (sha1, password) VALUES ");
-    sql.append("(?, ?),".repeat(size));
+    sql.append("(?, ?),".repeat(passwordsHashes.length));
     sql.setCharAt(sql.length() - 1, ';');
     try (PreparedStatement insert = connection.prepareStatement(sql.toString())) {
-      for (int i = 0; i < size; i++) {
-        insert.setBytes(i * 2 + 1, hashes[i]);
-        insert.setString(i * 2 + 2, passwords[i]);
+      for (int i = 0; i < passwordsHashes.length; i++) {
+        insert.setBytes(i * 2 + 1, passwordsHashes[i].getHash());
+        insert.setString(i * 2 + 2, passwordsHashes[i].getPassword());
       }
       insert.executeUpdate();
     }
