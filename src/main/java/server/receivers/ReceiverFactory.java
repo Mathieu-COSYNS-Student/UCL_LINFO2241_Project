@@ -8,9 +8,9 @@ public class ReceiverFactory {
 
   private final Class<? extends Receiver> receiverClass;
 
+  @SuppressWarnings("unchecked")
   public ReceiverFactory(String className) {
     try {
-      //noinspection unchecked
       this.receiverClass = (Class<? extends Receiver>) Class.forName(className);
     } catch (ClassNotFoundException e) {
       throw new IllegalArgumentException();
