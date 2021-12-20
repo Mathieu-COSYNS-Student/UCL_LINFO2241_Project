@@ -14,6 +14,8 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
@@ -21,7 +23,7 @@ import javax.crypto.SecretKey;
 
 public class ClientMain {
 
-  private static ArrayList<Sender> connections = new ArrayList<>();
+  private static Map<Sender,Long> connections = new HashMap<>();
 
 
   public static void main(String[] args) {
@@ -44,21 +46,26 @@ public class ClientMain {
       // Creating socket to connect to server (in this example it runs on the localhost on port 3333)
       Sender sender = null;
       for (int i = 0; i < 100; i++) {
+        long startTime = System.currentTimeMillis();
         Socket socket = new Socket("localhost", 3333);
         Request request = new Request(hashPwd, pwdLength, fileLength, encryptedFile);
         sender = new Sender(request, socket);
-        connections.add(sender);
+        connections.put(sender,startTime);
         sender.start();
       }
-      for (Sender connection:connections) {
+      int requestCounter = 1;
+      for (Sender connection:connections.keySet()) {
         connection.join();
         Response response = connection.getResponse();
         if (response != null) {
-          System.out.println("Decrypted file length from the server response: " + response.getFileLength());
-          System.out.println("Decrypted file length: " + response.getFile().length());
+          //System.out.println("Decrypted file length from the server response: " + response.getFileLength());
+          //System.out.println("Decrypted file length: " + response.getFile().length());
+          long elapsedTime = System.currentTimeMillis() - connections.get(connection);
+          getFormattedTimeMeasurements(elapsedTime,requestCounter);
         } else {
           System.out.println("No response from the server");
         }
+        requestCounter++;
       }
 
     } catch (NoSuchAlgorithmException | InvalidKeySpecException | InvalidAlgorithmParameterException
@@ -67,6 +74,12 @@ public class ClientMain {
       e.printStackTrace();
     }
 
+  }
+
+  public static void getFormattedTimeMeasurements(long timeInMilliseconds, int senderID){
+    long minutes = (timeInMilliseconds / 1000) / 60;
+    long seconds = (timeInMilliseconds / 1000) % 60;
+    System.out.println("Request n°"+senderID+" ---> Request/Response Time : "+minutes+" minutes and "+seconds+" seconds");
   }
 
 
