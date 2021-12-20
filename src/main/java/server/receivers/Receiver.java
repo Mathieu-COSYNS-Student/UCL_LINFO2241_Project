@@ -5,7 +5,6 @@ import common.FileManagement;
 import common.Request;
 import common.Request.Builder;
 import common.Response;
-
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
@@ -37,10 +36,10 @@ public abstract class Receiver extends Thread {
         DataOutputStream out = new DataOutputStream(socket.getOutputStream());
         DataInputStream in = new DataInputStream(socket.getInputStream())) {
 
-            Thread.sleep(getPoissonRandomNumber(0.06)); // 1 request every 15 seconds aka 1/15
-            Request.Builder builder = new Builder();
-            readRequestHeader(in, builder);
-            readRequestFile(in, builder);
+      Thread.sleep(getPoissonRandomNumber(0.06)); // 1 request every 15 seconds aka 1/15
+      Request.Builder builder = new Builder();
+      readRequestHeader(in, builder);
+      readRequestFile(in, builder);
 
       Response response = handleRequest(builder.build());
       if (response != null) {
@@ -48,11 +47,11 @@ public abstract class Receiver extends Thread {
         writeResponseFile(out, response);
       }
 
-            socket.close();
-        } catch (IOException | InterruptedException e) {
-            e.printStackTrace();
-        }
+      socket.close();
+    } catch (IOException | InterruptedException e) {
+      e.printStackTrace();
     }
+  }
 
   private void readRequestHeader(DataInputStream in, Request.Builder builder) throws IOException {
     byte[] passwordHash;

@@ -27,7 +27,8 @@ public class Response {
     private long fileLength;
     private File file;
 
-    public Builder() {}
+    public Builder() {
+    }
 
     public long getFileLength() {
       return fileLength;
@@ -46,7 +47,7 @@ public class Response {
     }
 
     public Response build() {
-       return new Response(this.fileLength, this.file);
+      return new Response(this.fileLength, this.file);
     }
 
   }

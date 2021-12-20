@@ -33,12 +33,14 @@ public class Request {
   }
 
   public static class Builder {
+
     private byte[] passwordHash;
     private int passwordLength;
     private long fileLength;
     private File file;
 
-    public Builder() {}
+    public Builder() {
+    }
 
     public byte[] getPasswordHash() {
       return passwordHash;

@@ -11,10 +11,11 @@ public class FileManagement {
 
   public static void receiveFile(InputStream inputStream, File file, long fileLength)
       throws IOException {
-    if(file == null)
+    if (file == null) {
       return;
+    }
 
-    try(OutputStream out = new FileOutputStream(file)) {
+    try (OutputStream out = new FileOutputStream(file)) {
       int readFromFile = 0;
       int bytesRead;
       byte[] readBuffer = new byte[64];
@@ -29,10 +30,11 @@ public class FileManagement {
 
   public static void sendFile(File file, OutputStream outputStream)
       throws IOException {
-    if(file == null)
+    if (file == null) {
       return;
+    }
 
-    try(InputStream in = new FileInputStream(file)) {
+    try (InputStream in = new FileInputStream(file)) {
       int readCount;
       byte[] buffer = new byte[64];
       //read from the file and send it in the socket
