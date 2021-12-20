@@ -1,5 +1,5 @@
 .idea/
-out/
-resources/
+target/
 *.iml
 *.pdf
+password.db
