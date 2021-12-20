@@ -16,6 +16,7 @@ import java.net.Socket;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
+import java.util.Random;
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
@@ -36,7 +37,7 @@ public abstract class Receiver extends Thread {
         DataOutputStream out = new DataOutputStream(socket.getOutputStream());
         DataInputStream in = new DataInputStream(socket.getInputStream())) {
 
-            Thread.sleep((long) (Math.random() * (10000))); // MAX 10 seconds to emulate random res
+            Thread.sleep(getPoissonRandomNumber(0.06)); // 1 request every 15 seconds aka 1/15
             Request.Builder builder = new Builder();
             readRequestHeader(in, builder);
             readRequestFile(in, builder);
@@ -107,6 +108,18 @@ public abstract class Receiver extends Thread {
 
   private void writeResponseFile(OutputStream out, Response response) throws IOException {
     FileManagement.sendFile(response.getFile(), out);
+  }
+
+  private static int getPoissonRandomNumber(double rate) {
+    Random r = new Random();
+    double L = Math.exp(-rate);
+    int k = 0;
+    double p = 1.0;
+    do {
+      p = p * r.nextDouble();
+      k++;
+    } while (p > L);
+    return k - 1;
   }
 
 }

@@ -4,7 +4,7 @@ import common.CryptoUtils;
 import common.Hash;
 import common.Request;
 import common.Response;
-import server.Receiver;
+import server.receivers.Receiver;
 
 import java.io.File;
 import java.io.IOException;
@@ -68,5 +68,7 @@ public class ClientMain {
     }
 
   }
+
+
 }
 
