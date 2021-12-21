@@ -46,32 +46,36 @@ public class Request {
       return passwordHash;
     }
 
-    public void setPasswordHash(byte[] passwordHash) {
+    public Builder setPasswordHash(byte[] passwordHash) {
       this.passwordHash = passwordHash;
+      return this;
     }
 
     public int getPasswordLength() {
       return passwordLength;
     }
 
-    public void setPasswordLength(int passwordLength) {
+    public Builder setPasswordLength(int passwordLength) {
       this.passwordLength = passwordLength;
+      return this;
     }
 
     public long getFileLength() {
       return fileLength;
     }
 
-    public void setFileLength(long fileLength) {
+    public Builder setFileLength(long fileLength) {
       this.fileLength = fileLength;
+      return this;
     }
 
     public File getFile() {
       return file;
     }
 
-    public void setFile(File file) {
+    public Builder setFile(File file) {
       this.file = file;
+      return this;
     }
 
     public Request build() {
