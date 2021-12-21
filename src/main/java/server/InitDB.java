@@ -28,7 +28,7 @@ public class InitDB {
     });
 
     try (InputStream in = InitDB.class.getClassLoader()
-        .getResourceAsStream("src/main/resources/10k-most-common_filered.txt")) {
+        .getResourceAsStream("10k-most-common_filered.txt")) {
       if (in != null) {
         try (
             InputStreamReader streamReader =
