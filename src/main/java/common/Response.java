@@ -34,16 +34,18 @@ public class Response {
       return fileLength;
     }
 
-    public void setFileLength(long fileLength) {
+    public Builder setFileLength(long fileLength) {
       this.fileLength = fileLength;
+      return this;
     }
 
     public File getFile() {
       return file;
     }
 
-    public void setFile(File file) {
+    public Builder setFile(File file) {
       this.file = file;
+      return this;
     }
 
     public Response build() {

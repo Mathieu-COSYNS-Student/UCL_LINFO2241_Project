@@ -15,7 +15,6 @@ import java.net.Socket;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
-import java.util.Random;
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
@@ -65,15 +64,15 @@ public abstract class Receiver extends Thread {
   }
 
   private void readRequestFile(InputStream in, Request.Builder builder) throws IOException {
-    File requestFile = new File("request-" + System.currentTimeMillis() + ".pdf");
+    File requestFile = File.createTempFile("server-request-from-client", null);
     FileManagement.receiveFile(in, requestFile, builder.getFileLength());
 
     builder.setFile(requestFile);
   }
 
-  private Response handleRequest(Request request) {
+  private Response handleRequest(Request request) throws IOException {
 
-    File decryptedFile = new File("decrypted-server-" + System.currentTimeMillis() + ".pdf");
+    File decryptedFile = File.createTempFile("server-decrypted", null);
     long fileLength = request.getFileLength();
 
     System.out.println("Encrypted file length from the request: " + fileLength);

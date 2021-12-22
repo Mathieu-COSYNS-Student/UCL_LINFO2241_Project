@@ -15,6 +15,7 @@ public class Sender extends Thread {
 
   private final Request request;
   private final Socket socket;
+  private long elapsedTime;
   private Response response;
 
   public Sender(Request request, Socket socket) {
@@ -23,12 +24,17 @@ public class Sender extends Thread {
     this.socket = socket;
   }
 
+  public long getElapsedTime() {
+    return elapsedTime;
+  }
+
   public Response getResponse() {
     return response;
   }
 
   @Override
   public void run() {
+    long start = System.currentTimeMillis();
     try (
         DataOutputStream out = new DataOutputStream(socket.getOutputStream());
         DataInputStream in = new DataInputStream(socket.getInputStream())) {
@@ -46,6 +52,7 @@ public class Sender extends Thread {
     } catch (IOException e) {
       e.printStackTrace();
     }
+    this.elapsedTime = System.currentTimeMillis() - start;
   }
 
   private void writeRequestHeader(DataOutputStream out) throws IOException {
@@ -64,7 +71,7 @@ public class Sender extends Thread {
   }
 
   private void readResponseFile(InputStream in, Response.Builder builder) throws IOException {
-    File responseFile = new File("response-" + System.currentTimeMillis() + ".pdf");
+    File responseFile = File.createTempFile("client-response-from-server-", null);
     FileManagement.receiveFile(in, responseFile, builder.getFileLength());
 
     builder.setFile(responseFile);

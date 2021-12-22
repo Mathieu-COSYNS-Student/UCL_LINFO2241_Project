@@ -1,152 +1,151 @@
 package client;
 
-import common.CryptoUtils;
-import common.Hash;
 import common.Request;
 import common.Response;
-import org.apache.commons.lang3.RandomStringUtils;
-
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.Socket;
-import java.security.InvalidAlgorithmParameterException;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
-import java.security.spec.InvalidKeySpecException;
-import java.util.*;
-import javax.crypto.BadPaddingException;
-import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.NoSuchPaddingException;
-import javax.crypto.SecretKey;
+import java.util.ArrayList;
+import java.util.Random;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import org.apache.commons.io.IOUtils;
 
 public class ClientMain {
 
-    private static final Map<Sender, Long> connections = new HashMap<>();
-    private static final Random r = new Random(3);
+  private static final Random RANDOM = new Random(3);
 
+  public static void main(String[] args) {
 
-    public static void main(String[] args) {
-        try {
-            for (String password : getRandomPasswordList()) { //This method will always give you the same list of 75 passwords
-                SecretKey keyGenerated = CryptoUtils.getKeyFromPassword(password);
+    if (args.length != 1) {
+      System.err.println(
+          "Set the first argument to a directory that contains the files that will be encrypted and sent to the server.");
+      System.exit(1);
+    }
 
-                File inputFile = getRandomFileToBeEncrypted();
-                File encryptedFile;
-                if (inputFile != null) {
-                    encryptedFile = new File("encrypted-" + inputFile.getName());
-                } else {
-                    throw new NoSuchElementException();
-                }
+    if (getRandomFileToBeEncrypted(args[0]) == null) {
+      System.out.println("No files in " + args[0]
+          + ". Are you providing a directory ? Does this directory contains files ?");
+      System.exit(1);
+    }
 
-                // This is an example to help you create your request
-                CryptoUtils.encryptFile(keyGenerated, inputFile, encryptedFile);
-                System.out.println("Password used: " + password);
-                System.out.println("Input file length of " + inputFile.getName() + " : " + inputFile.length());
-                System.out.println("Encrypted file length of " + encryptedFile.getName() + " : " + encryptedFile.length());
+    // Create temporary encrypted files used for the tests
+    ArrayList<Future<Request>> futuresRequests = new ArrayList<>();
+    ArrayList<File> inputsFiles = new ArrayList<>();
+    ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime()
+        .availableProcessors());
 
-                // SEND THE PROCESSING INFORMATION AND FILE
-                byte[] hashPwd = Hash.sha1(password);
-                int pwdLength = password.length();
-                long fileLength = encryptedFile.length();
-                // Creating socket to connect to server (in this example it runs on the localhost on port 3333)
-                Sender sender;
+    for (String password : getPasswordList()) {
+      File inputFile = getRandomFileToBeEncrypted(args[0]);
+      RequestPrepareCallable requestPrepareCallable = new RequestPrepareCallable(inputFile,
+          password);
+      inputsFiles.add(inputFile);
+      futuresRequests.add(executorService.submit(requestPrepareCallable));
+    }
+    executorService.shutdown();
 
-                Thread.sleep(getPoissonRandomNumber(0.06)); // 1 request every 15 seconds aka 1/15
-                long startTime = System.currentTimeMillis();
-                Socket socket = new Socket("localhost", 3333);
-                Request request = new Request(hashPwd, pwdLength, fileLength, encryptedFile);
-                sender = new Sender(request, socket);
-                connections.put(sender, startTime);
-                sender.start();
-            }
+    ArrayList<Request> requests = new ArrayList<>();
+    try {
+      for (Future<Request> futureRequest : futuresRequests) {
+        requests.add(futureRequest.get());
+      }
+    } catch (InterruptedException | ExecutionException e) {
+      e.printStackTrace();
+      requests.clear();
+    }
 
+    // Send requests
+    ArrayList<Sender> senders = new ArrayList<>();
+    try {
+      for (Request request : requests) {
+        Thread.sleep(getPoissonRandomNumber(0.06)); // 1 request every 15 seconds aka 1/15
 
-            int requestCounter = 1;
-            for (Sender connection : connections.keySet()) {
-                connection.join();
-                Response response = connection.getResponse();
-                if (response != null) {
-                    //System.out.println("Decrypted file length from the server response: " + response.getFileLength());
-                    //System.out.println("Decrypted file length: " + response.getFile().length());
-                    long elapsedTime = System.currentTimeMillis() - connections.get(connection);
-                    getFormattedTimeMeasurements(elapsedTime, requestCounter);
-                } else {
-                    System.out.println("No response from the server");
-                }
-                requestCounter++;
-            }
+        Socket socket = new Socket("localhost", 3333);
+        Sender sender = new Sender(request, socket);
+        sender.start();
+        senders.add(sender);
+      }
+    } catch (InterruptedException | IOException e) {
+      e.printStackTrace();
+    }
 
-        } catch (NoSuchAlgorithmException | InvalidKeySpecException | InvalidAlgorithmParameterException
-                | NoSuchPaddingException | IllegalBlockSizeException | IOException | BadPaddingException
-                | InvalidKeyException | InterruptedException e) {
-            e.printStackTrace();
+    // Await for all requests to finish
+    try {
+      for (int i = 0; i < senders.size(); i++) {
+        Sender sender = senders.get(i);
+        sender.join();
+        Response response = sender.getResponse();
+        if (response != null) {
+          getFormattedTimeMeasurements(sender.getElapsedTime(), i);
+          if (!filesCompareByByte(inputsFiles.get(i), response.getFile())) {
+            System.out.println(
+                "!!! the file received form the server is not the same as the original one");
+            System.out.println(
+                "!!! " + inputsFiles.get(i).getAbsolutePath() + " >< " + response.getFile()
+                    .getAbsolutePath());
+          }
+        } else {
+          System.out.println("No response from the server");
         }
-
+      }
+    } catch (InterruptedException | IOException e) {
+      e.printStackTrace();
     }
+  }
 
-    public static void getFormattedTimeMeasurements(long timeInMilliseconds, int senderID) {
-        long minutes = (timeInMilliseconds / 1000) / 60;
-        long seconds = (timeInMilliseconds / 1000) % 60;
-        System.out.println(
-                "Request n°" + senderID + " ---> Request/Response Time : " + minutes + " minutes and "
-                        + seconds + " seconds");
+  public static void getFormattedTimeMeasurements(long timeInMilliseconds, int senderID) {
+    long minutes = (timeInMilliseconds / 1000) / 60;
+    long seconds = (timeInMilliseconds / 1000) % 60;
+    System.out.println(
+        "Request n°" + senderID + " ---> Request/Response Time : " + minutes + " minutes and "
+            + seconds + " seconds");
+  }
+
+  private static int getPoissonRandomNumber(double rate) {
+    Random r = new Random();
+    double L = Math.exp(-rate);
+    int k = 0;
+    double p = 1.0;
+    do {
+      p = p * r.nextDouble();
+      k++;
+    } while (p > L);
+    return k - 1;
+  }
+
+  private static String[] getPasswordList() {
+    // return new String[]{"test"};
+    return new String[]{"vrmeh", "oiwfm", "hhfsp", "alley", "redskin",
+        "billybob", "zvgeo", "qckwd", "sparky", "punkrock", "ghihv", "jeqnb", "volvo",
+        "zurich", "jnggw", "ymmpa", "dfkyd", "uihup", "mbabw", "trinh", "xgvgd",
+        "wgqyl", "pgkbh", "pqdqg", "forum", "pjhek", "pgkiy", "sentra", "smokie",
+        "nbkij", "diane", "xqtfg", "schmidt", "tcluo", "mailman", "ewddr", "aefqd",
+        "kinky", "sbhba", "zjpof", "lrfft", "inyqc", "kngfg", "ybuxx", "amasz",
+        "fastball", "ccccccc", "pszbw", "miffs", "qahfr", "malone", "bppmn", "anne",
+        "mesdr", "lpsok", "gvaox", "classics", "fmzsh", "blnlo", "lillie", "candyass",
+        "kkbnb", "umgtf", "lksty", "dogboy", "qasiz", "manga", "safety", "saqfs",
+        "fnlbi", "nsene", "wgpwd", "ixumt", "perry", "pmrho"
+    };
+  }
+
+  private static File getRandomFileToBeEncrypted(String dir) {
+    File directory = new File(dir);
+    File[] files = directory.listFiles();
+    if (files != null) {
+      int randomIndex = RANDOM.nextInt(files.length);
+      return files[randomIndex];
     }
+    return null;
+  }
 
-    private static int getPoissonRandomNumber(double rate) {
-        Random r = new Random();
-        double L = Math.exp(-rate);
-        int k = 0;
-        double p = 1.0;
-        do {
-            p = p * r.nextDouble();
-            k++;
-        } while (p > L);
-        return k - 1;
+  public static boolean filesCompareByByte(File file1, File file2) throws IOException {
+    try (InputStream in1 = new FileInputStream(file1);
+        InputStream in2 = new FileInputStream(file2)) {
+      return IOUtils.contentEquals(in1, in2);
     }
-
-    /*private static List<String> getListOfPasswords() {
-        ArrayList<String> listOfPasswords = new ArrayList<>(Arrays.asList("alley", "lillie", "manga", "kinky",
-                "schmidt", "dogboy", "billybob", "volvo", "perry",
-                "sentra", "zurich", "forum", "safety", "candyass",
-                "mailman", "smokie", "redskin", "punkrock", "anne",
-                "malone", "fastball", "diane", "classics", "ccccccc",
-                "sparky"));
-        int numberOfRandomPasswords = 50;
-        for (int i = 1; i <= numberOfRandomPasswords; i++) {
-            listOfPasswords.add(randomPasswordGenerator());
-        }
-        Collections.shuffle(listOfPasswords);
-        return listOfPasswords;
-    }
-
-    private static String randomPasswordGenerator() {
-        String characters = "abcdefghijklmnopqrstuvwxyz";
-        return RandomStringUtils.random(5, characters);
-    }*/
-
-    private static List<String> getRandomPasswordList() {
-        return new ArrayList<>(Arrays.asList("vrmeh", "oiwfm", "hhfsp", "alley", "redskin",
-                "billybob", "zvgeo", "qckwd", "sparky","punkrock", "ghihv", "jeqnb", "volvo",
-                "zurich", "jnggw", "ymmpa", "dfkyd","uihup", "mbabw", "trinh", "xgvgd",
-                "wgqyl", "pgkbh", "pqdqg", "forum","pjhek", "pgkiy", "sentra", "smokie",
-                "nbkij", "diane", "xqtfg", "schmidt","tcluo", "mailman", "ewddr", "aefqd",
-                "kinky", "sbhba", "zjpof", "lrfft", "inyqc","kngfg", "ybuxx", "amasz",
-                "fastball", "ccccccc","pszbw", "miffs", "qahfr", "malone", "bppmn", "anne",
-                "mesdr", "lpsok", "gvaox", "classics", "fmzsh", "blnlo", "lillie", "candyass",
-                "kkbnb", "umgtf", "lksty", "dogboy","qasiz", "manga", "safety", "saqfs",
-                "fnlbi", "nsene", "wgpwd", "ixumt", "perry", "pmrho"
-                ));
-    }
-
-    private static File getRandomFileToBeEncrypted() {
-        File directory = new File("src/main/resources/filesToBeEncrypted");
-        File[] files = directory.listFiles();
-        if (files != null) {
-            int randomIndex = r.nextInt(files.length);
-            return files[randomIndex];
-        }
-        return null;
-
-
-    }
+  }
 }
