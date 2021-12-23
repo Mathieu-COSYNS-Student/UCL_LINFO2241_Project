@@ -5,7 +5,6 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import server.receivers.BrutForceReceiver;
 import server.receivers.DatabaseBrutForceReceiver;
 import server.receivers.DatabaseMultiThreadBrutForceReceiver;
@@ -15,6 +14,7 @@ import server.receivers.ReceiverFactory;
 
 public class ServerMain {
 
+  @SuppressWarnings("InfiniteLoopStatement")
   public static void main(String[] args) {
 
     if (args.length != 1) {
@@ -33,35 +33,15 @@ public class ServerMain {
 
     assert receiverFactory != null;
 
-    var Status = new Object() {
-      boolean isRunning = true;
-    };
-
     try (ServerSocket ss = new ServerSocket(portNumber)) {
       System.out.println("Listening on port " + portNumber);
 
-      ExecutorService executorService = Executors.newSingleThreadExecutor();
+      ExecutorService requestQueue = Executors.newSingleThreadExecutor();
 
-      Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-        try {
-          Status.isRunning = false;
-          executorService.shutdown();
-          System.out.println("Awaiting for all tasks in the pool to complete");
-          if (!executorService.awaitTermination(1, TimeUnit.DAYS)) {
-            System.err.println("Could not shutdown the server properly.");
-          }
-
-        } catch (InterruptedException e) {
-          System.err.println("Could not shutdown the server properly.");
-          Thread.currentThread().interrupt();
-          e.printStackTrace();
-        }
-      }));
-
-      while (Status.isRunning) {
+      while (true) {
         Socket socket = ss.accept();
         Receiver receiver = receiverFactory.newInstance(socket);
-        executorService.execute(receiver);
+        requestQueue.execute(receiver);
       }
     } catch (IOException e) {
       System.err.println("Could not listen on port " + portNumber);
