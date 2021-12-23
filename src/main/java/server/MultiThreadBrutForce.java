@@ -62,9 +62,10 @@ public class MultiThreadBrutForce {
       throws InterruptedException, ExecutionException {
     threads[threadCount] = new BrutForceThread(passwords);
     threadsFutures[threadCount] = pool.submit(threads[threadCount]);
-    if (forceRun || threadCount + 1 >= MAX_TREADS) {
+    threadCount++;
+    if (forceRun || threadCount >= MAX_TREADS) {
       for (int i = 0; i < threadCount; i++) {
-        threadsFutures[threadCount].get();
+        threadsFutures[threadCount - 1].get();
         if (resultProcessor.apply(threads[i].getResults())) {
           return true;
         }
@@ -73,7 +74,6 @@ public class MultiThreadBrutForce {
       threadCount = 0;
       return false;
     }
-    threadCount++;
     return false;
   }
 }
