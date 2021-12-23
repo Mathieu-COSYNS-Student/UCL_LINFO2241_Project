@@ -10,7 +10,7 @@ if "$BASEDIR/yes-no.sh" -m "Do you want to see charts in a graphical interface ?
   GRAPHICS=""
 fi
 
-mkdir "$OUTDIR"
+mkdir -p "$OUTDIR"
 
 # Tache 1.1
 "$BASEDIR/make_plot.py" \
