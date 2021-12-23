@@ -65,7 +65,7 @@ public class MultiThreadBrutForce {
     threadCount++;
     if (forceRun || threadCount >= MAX_TREADS) {
       for (int i = 0; i < threadCount; i++) {
-        threadsFutures[threadCount - 1].get();
+        threadsFutures[i].get();
         if (resultProcessor.apply(threads[i].getResults())) {
           threadCount = 0;
           return true;
