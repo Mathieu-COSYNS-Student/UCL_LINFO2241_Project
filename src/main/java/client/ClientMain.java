@@ -38,7 +38,7 @@ public class ClientMain {
       System.exit(1);
     }
 
-    for (int turn = 1; turn <= 5 ; turn++) {
+    //for (int turn = 1; turn <= 5 ; turn++) {
       // Create temporary encrypted files used for the tests
       ArrayList<Future<Request>> futuresRequests = new ArrayList<>();
       ArrayList<File> inputsFiles = new ArrayList<>();
@@ -46,7 +46,7 @@ public class ClientMain {
               .availableProcessors());
 
       for (String password : getPasswordList()) {
-        File inputFile = new File("filesToBeEncrypted/Files-100KB/PineTools.com_files/file-1.bin");
+        File inputFile = getRandomFileToBeEncrypted(args[0]);
         RequestPrepareCallable requestPrepareCallable = new RequestPrepareCallable(inputFile,
                 password);
         inputsFiles.add(inputFile);
@@ -68,7 +68,7 @@ public class ClientMain {
       ArrayList<Sender> senders = new ArrayList<>();
       try {
         for (Request request : requests) {
-          Thread.sleep(getPoissonRandomNumber(0.06)); // 1 request every 15 seconds aka 1/15
+          Thread.sleep(getPoissonRandomNumber(0.2)); // 1 request every 5 seconds aka 1/5
           Socket socket = new Socket("project-2.eastus.cloudapp.azure.com", 3333);
           Sender sender = new Sender(request, socket);
           sender.start();
@@ -86,7 +86,7 @@ public class ClientMain {
           Response response = sender.getResponse();
           if (response != null) {
             getFormattedTimeMeasurements(sender.getElapsedTime(), i);
-            String[] data = new String[]{"z-100KB", "" + (turn) + "", "" + sender.getElapsedTime() + ""};
+            String[] data = new String[]{"request-"+i, "" + sender.getElapsedTime() + ""};
             dataLines.add(data);
             if (!filesCompareByByte(inputsFiles.get(i), response.getFile())) {
               System.out.println(
@@ -102,7 +102,7 @@ public class ClientMain {
       } catch (InterruptedException | IOException e) {
         e.printStackTrace();
       }
-    }
+
 
     try {
       csvMaker.givenDataArray_whenConvertToCSV_thenOutputCreated(dataLines);
@@ -135,25 +135,26 @@ public class ClientMain {
 
   private static String[] getPasswordList() {
 
-    return new String[]{"z"};
-    };
+//    return new String[]{"xyxy"};
+//    };
 //     return new String[]{"z","z","z","z","z",
 //             "zz","zz","zz","zz","zz",
 //     "zzz","zzz","zzz","zzz","zzz",
 //     "zzzz","zzzz","zzzz","zzzz","zzzz",
 //     "zzzzz","zzzzz","zzzzz","zzzzz","zzzzz",
 //     "zzzzzz","zzzzzz","zzzzzz","zzzzzz","zzzzzz"};
-//    return new String[]{"vrmeh", "oiwfm", "hhfsp", "alley", "redskin",
-//            "billybob", "zvgeo", "qckwd", "sparky", "punkrock", "ghihv", "jeqnb", "volvo",
-//            "zurich", "jnggw", "ymmpa", "dfkyd", "uihup", "mbabw", "trinh", "xgvgd",
-//            "wgqyl", "pgkbh", "pqdqg", "forum", "pjhek", "pgkiy", "sentra", "smokie",
-//            "nbkij", "diane", "xqtfg", "schmidt", "tcluo", "mailman", "ewddr", "aefqd",
-//            "kinky", "sbhba", "zjpof", "lrfft", "inyqc", "kngfg", "ybuxx", "amasz",
-//            "fastball", "ccccccc", "pszbw", "miffs", "qahfr", "malone", "bppmn", "anne",
-//            "mesdr", "lpsok", "gvaox", "classics", "fmzsh", "blnlo", "lillie", "candyass",
-//            "kkbnb", "umgtf", "lksty", "dogboy", "qasiz", "manga", "safety", "saqfs",
-//            "fnlbi", "nsene", "wgpwd", "ixumt", "perry", "pmrho"
-//    };
+    return new String[]{"vrmeh", "oiwfm", "hhfsp", "alley", "redskin",
+            "billybob", "zvgeo", "qckwd", "sparky", "punkrock", "ghihv", "jeqnb", "volvo",
+            "zurich", "jnggw", "ymmpa", "dfkyd", "uihup", "mbabw", "trinh", "xgvgd",
+            "wgqyl", "pgkbh", "pqdqg", "forum", "pjhek", "pgkiy", "sentra", "smokie",
+            "nbkij", "diane", "xqtfg", "schmidt", "tcluo", "mailman", "ewddr", "aefqd",
+            "kinky", "sbhba", "zjpof", "lrfft", "inyqc", "kngfg", "ybuxx", "amasz",
+            "fastball", "ccccccc", "pszbw", "miffs", "qahfr", "malone", "bppmn", "anne",
+            "mesdr", "lpsok", "gvaox", "classics", "fmzsh", "blnlo", "lillie", "candyass",
+            "kkbnb", "umgtf", "lksty", "dogboy", "qasiz", "manga", "safety", "saqfs",
+            "fnlbi", "nsene", "wgpwd", "ixumt", "perry", "pmrho"
+    };
+  }
 
 
 
