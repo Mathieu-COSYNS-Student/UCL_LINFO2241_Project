@@ -36,7 +36,7 @@ public class ServerMain {
     try (ServerSocket ss = new ServerSocket(portNumber)) {
       System.out.println("Listening on port " + portNumber);
 
-      ExecutorService requestQueue = Executors.newSingleThreadExecutor();
+      ExecutorService requestQueue = Executors.newFixedThreadPool(2);
 
       while (true) {
         Socket socket = ss.accept();

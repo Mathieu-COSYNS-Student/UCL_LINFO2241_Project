@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 GROUP_BY_COLUMN = 'load_name'
-VALUES_COLUMN = 'elapsed_time_ms'
+VALUES_COLUMN = 'elapsed_time_seconds'
 
 
 def main(argv):
@@ -41,7 +41,7 @@ def read_csv_and_agg(files):
 
         df = df[[GROUP_BY_COLUMN, VALUES_COLUMN]]
 
-        df = df.groupby(GROUP_BY_COLUMN).agg([np.mean, np.std])
+        df = df.groupby(GROUP_BY_COLUMN, sort=False).agg([np.mean, np.std])
 
         df.rename(
             columns={VALUES_COLUMN: f"{VALUES_COLUMN}_{i}"}, inplace=True)
