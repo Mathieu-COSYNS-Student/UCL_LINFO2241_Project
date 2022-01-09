@@ -14,6 +14,11 @@ import java.net.Socket;
 public class Sender extends Thread {
 
   private final Request request;
+
+  public Socket getSocket() {
+    return socket;
+  }
+
   private final Socket socket;
   private long elapsedTime;
   private Response response;
@@ -41,17 +46,24 @@ public class Sender extends Thread {
 
       writeRequestHeader(out);
       writeRequestFile(out);
-
+      System.out.println();
       Response.Builder builder = new Response.Builder();
-      readResponseHeader(in, builder);
-      readResponseFile(in, builder);
 
+      System.out.println("Reading the response header from the server - Port : "+socket.getLocalPort());
+      readResponseHeader(in, builder);
+      System.out.println("Finished reading the response header from the server - Port : "+socket.getLocalPort());
+      System.out.println("Reading the response file from the server - Port : "+socket.getLocalPort());
+      readResponseFile(in, builder);
+      System.out.println("Finished reading the response file from the server - Port : "+socket.getLocalPort());
       this.response = builder.build();
+
+      System.out.println("Building response COMPLETE - Port : "+socket.getLocalPort());
 
       socket.close();
     } catch (IOException e) {
       e.printStackTrace();
     }
+
     this.elapsedTime = System.currentTimeMillis() - start;
   }
 
