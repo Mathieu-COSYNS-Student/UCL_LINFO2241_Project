@@ -32,4 +32,14 @@ mkdir -p "$OUTDIR"
   --out-png "$OUTDIR/test_file_sizes.png" \
   "$GRAPHICS" &
 
+"$BASEDIR/make_plot.py" \
+  --type bar \
+  -t "TEST" \
+  -x "Request" \
+  -y "Request/Response elapsed time (in seconds)" \
+  -i "$BASEDIR/test_realistic_basic.csv" -m "Basic Implementation" \
+  -i "$BASEDIR/test_realistic_optimized.csv" -m "Optimized Implementation" \
+  --out-png "$OUTDIR/test_realistic.png" \
+  "$GRAPHICS" &
+
 wait $(jobs -p)
