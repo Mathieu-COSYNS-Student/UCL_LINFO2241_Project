@@ -42,6 +42,7 @@ public class FileManagement {
         outputStream.write(buffer, 0, readCount);
       }
     }
+    outputStream.flush();
 
   }
 }
