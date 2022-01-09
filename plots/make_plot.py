@@ -8,6 +8,7 @@ import numpy as np
 
 GROUP_BY_COLUMN = 'load_name'
 VALUES_COLUMN = 'elapsed_time_seconds'
+ATTEMPTS_COLUMN = 'attempt_number'
 
 
 def main(argv):
@@ -15,18 +16,12 @@ def main(argv):
     # print(f'options: {options}')
 
     df = read_csv_and_agg(options['inputs'])
+    del options['inputs']
 
     # print(df.head())
+    # print(df.to_string())
 
-    plot(df,
-         type=options['type'],
-         title=options['title'],
-         means_labels=options['means_labels'],
-         xlabel=options['x'],
-         ylabel=options['y'],
-         pdf=options['output_pdf'],
-         png=options['output_png'],
-         graphics=options['graphics'])
+    plot(df, **options)
 
 
 def read_csv_and_agg(files):
@@ -38,10 +33,14 @@ def read_csv_and_agg(files):
 
     for i, file in enumerate(files):
         df = pd.read_csv(file)
+        agg = [np.mean, np.std]
+
+        if df[ATTEMPTS_COLUMN].unique().size == 1:
+            agg = [np.mean]
 
         df = df[[GROUP_BY_COLUMN, VALUES_COLUMN]]
 
-        df = df.groupby(GROUP_BY_COLUMN, sort=False).agg([np.mean, np.std])
+        df = df.groupby(GROUP_BY_COLUMN, sort=False).agg(agg)
 
         df.rename(
             columns={VALUES_COLUMN: f"{VALUES_COLUMN}_{i}"}, inplace=True)
@@ -54,7 +53,8 @@ def read_csv_and_agg(files):
     return main_df
 
 
-def plot(df, type=None, title=None, means_labels=None, xlabel=None, ylabel=None, pdf=None, png=None, graphics=True):
+def plot(df, type=None, title=None, means_labels=None, xlabel=None, ylabel=None,
+         no_xticks=False, output_pdf=None, output_png=None, graphics=True):
 
     columns = []
 
@@ -63,15 +63,21 @@ def plot(df, type=None, title=None, means_labels=None, xlabel=None, ylabel=None,
 
     columns = list(dict.fromkeys(columns))
 
+    ax = plt.gca()
+
     if type == 'bar':
-        ax = plt.gca()
         df.columns = ['_'.join(column)
                       for column in df.columns.to_flat_index()]
         means = [s for s in df.columns if s.endswith('mean')]
         stds = [s for s in df.columns if s.endswith('std')]
+
+        yerr = None
+        if len(stds) > 0:
+            yerr = df[stds].to_numpy().T
+
         df.plot.bar(
             y=means,
-            yerr=df[stds].to_numpy().T,
+            yerr=yerr,
             ecolor='black',
             capsize=5,
             ax=ax,
@@ -80,7 +86,6 @@ def plot(df, type=None, title=None, means_labels=None, xlabel=None, ylabel=None,
         ax.grid(True, axis='y')
         ax.set_axisbelow(True)
     else:
-        ax = plt.gca()
         for i, column in enumerate(columns):
             label = None
             if len(means_labels) > i:
@@ -102,11 +107,20 @@ def plot(df, type=None, title=None, means_labels=None, xlabel=None, ylabel=None,
     # plt.xlim(left=0)
     plt.ylim(bottom=0)
 
-    if pdf != None:
-        plt.savefig(pdf)
+    if no_xticks:
+        pass
+        ax.tick_params(
+            axis='x',          # changes apply to the x-axis
+            which='both',      # both major and minor ticks are affected
+            bottom=False,      # ticks along the bottom edge are off
+            top=False,         # ticks along the top edge are off
+            labelbottom=False)  # labels along the bottom edge are off
 
-    if png != None:
-        plt.savefig(png)
+    if output_pdf != None:
+        plt.savefig(output_pdf)
+
+    if output_png != None:
+        plt.savefig(output_png)
 
     if graphics:
         plt.show()
@@ -128,6 +142,9 @@ DESCRIPTION
 	
 	--no-graphics
 		disable the graphical interface
+
+    --no-xticks
+        disable ticks on x axis 
 
 	-o [output]
 		'-o output' if the same as setting '--out-pdf output.pdf' and '--out-png output.png'.
@@ -159,13 +176,14 @@ def read_options_from_cli(args):
     graphics = True
     title = None
     type = None
-    x = None
-    y = None
+    xlabel = None
+    ylabel = None
     means_labels = []
+    no_xticks = False
 
     try:
         opts, args = getopt.getopt(
-            args, 'hi:m:o:t:x:y:', ['help', 'mean-label=', 'out-pdf=', 'out-png=', 'no-graphics', 'title=', 'type=', 'xlabel=', 'ylabel='])
+            args, 'hi:m:o:t:x:y:', ['help', 'mean-label=', 'out-pdf=', 'out-png=', 'no-graphics', 'no-xticks', 'title=', 'type=', 'xlabel=', 'ylabel='])
     except getopt.GetoptError:
         print_usage(file=sys.stderr)
         sys.exit(1)
@@ -175,29 +193,31 @@ def read_options_from_cli(args):
         if opt in ('-h', '--help'):
             print_usage()
             sys.exit()
-        elif opt in ('-i'):
+        elif opt in ('-i',):
             inputs.append(arg)
-        elif opt in ('-o'):
+        elif opt in ('-o',):
             if output_pdf == None:
                 output_pdf = f'{arg}.pdf'
             if output_png == None:
                 output_png = f'{arg}.png'
         elif opt in ('-m', '--mean-label'):
             means_labels.append(arg)
-        elif opt in ('--no-graphics'):
+        elif opt in ('--no-graphics',):
             graphics = False
-        elif opt in ('--out-pdf'):
+        elif opt in ('--no-xticks',):
+            no_xticks = True
+        elif opt in ('--out-pdf',):
             output_pdf = arg
-        elif opt in ('--out-png'):
+        elif opt in ('--out-png',):
             output_png = arg
         elif opt in ('-t', '--title'):
             title = arg
-        elif opt in ('--type'):
+        elif opt in ('--type',):
             type = arg
         elif opt in ('-x', '--xlabel'):
-            x = arg
+            xlabel = arg
         elif opt in ('-y', '--ylabel'):
-            y = arg
+            ylabel = arg
 
     if input == None:
         print("No input file provided. Use the -i option", file=sys.stderr)
@@ -211,8 +231,9 @@ def read_options_from_cli(args):
         'title': title,
         'type': type,
         'means_labels': means_labels,
-        'x': x,
-        'y': y
+        'xlabel': xlabel,
+        'ylabel': ylabel,
+        'no_xticks': no_xticks
     }
 
 
