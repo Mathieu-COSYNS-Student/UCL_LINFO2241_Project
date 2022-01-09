@@ -30,22 +30,28 @@ public abstract class Receiver extends Thread {
 
   @Override
   public void run() {
-    System.out.println("Processing request for the connection from " + socket);
+    System.out.println(socket + " Processing request.");
     try (
         DataOutputStream out = new DataOutputStream(socket.getOutputStream());
         DataInputStream in = new DataInputStream(socket.getInputStream())) {
 
       Request.Builder builder = new Builder();
       readRequestHeader(in, builder);
+      System.out.println(socket + " Start reading file.");
       readRequestFile(in, builder);
+      System.out.println(socket + " File read.");
 
       Response response = handleRequest(builder.build());
       if (response != null) {
         writeResponseHeader(out, response);
+        System.out.println(socket + " Start writing file (" + response.getFile().length() + ").");
         writeResponseFile(out, response);
+        System.out.println(socket + " File wrote. (" + out.size() + " bytes)");
       }
 
+      System.out.println(socket + " Closing socket...");
       socket.close();
+      System.out.println(socket + " Closed");
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -75,8 +81,8 @@ public abstract class Receiver extends Thread {
     File decryptedFile = File.createTempFile("server-decrypted", null);
     long fileLength = request.getFileLength();
 
-    System.out.println("Encrypted file length from the request: " + fileLength);
-    System.out.println("Encrypted file length: " + request.getFile().length());
+    System.out.println(socket + " Encrypted file length from the request: " + fileLength);
+    System.out.println(socket + " Encrypted file length: " + request.getFile().length());
 
     String password = crackPassword(request.getPasswordHash(), request.getPasswordLength());
     if (password != null) {
@@ -106,7 +112,6 @@ public abstract class Receiver extends Thread {
   private void writeResponseFile(OutputStream out, Response response) throws IOException {
     FileManagement.sendFile(response.getFile(), out);
   }
-
 
 
 }
