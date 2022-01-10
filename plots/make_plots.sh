@@ -43,4 +43,15 @@ mkdir -p "$OUTDIR"
   --out-png "$OUTDIR/test_realistic.png" \
   "$GRAPHICS" &
 
+"$BASEDIR/make_plot.py" \
+  --type bar \
+  -t "Request/Response elapsed time with no tasks in the server queue" \
+  -x "Requests (first sent on the left)" \
+  --no-xticks \
+  -y "Request/Response elapsed time (in seconds)" \
+  -i "$BASEDIR/test_service_station_time_basic.csv" -m "Basic Implementation" \
+  -i "$BASEDIR/test_service_station_time_optimized.csv" -m "Optimized Implementation" \
+  --out-png "$OUTDIR/test_service_station_time.png" \
+  "$GRAPHICS" &
+
 wait $(jobs -p)

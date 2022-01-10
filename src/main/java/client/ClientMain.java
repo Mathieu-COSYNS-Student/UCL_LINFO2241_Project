@@ -2,11 +2,14 @@ package client;
 
 import common.Request;
 import common.Response;
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -14,13 +17,15 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.stream.Collectors;
 import org.apache.commons.io.IOUtils;
 
 public class ClientMain {
 
   private static final Random RANDOM = new Random(3);
-  private static List<String[]> dataLines = new ArrayList<>();
-  private static CSV csvMaker = new CSV();
+  private static final List<String[]> dataLines = new ArrayList<>();
+  private static final CSV csvMaker = new CSV();
+  private static String[] passwords;
 
   private static String FILE_PATH;
 
@@ -28,8 +33,9 @@ public class ClientMain {
   private static final int TEST_FILES = 2;
   private static final int TEST_REALISTIC = 3;
   private static final int TEST_TYPE = TEST_REALISTIC;
+  private static final boolean CONCURRENT_REQUESTS = true;
 
-  public static void main(String[] args) {
+  public static void main(String[] args) throws InterruptedException {
 
     if (args.length != 1) {
       System.err.println(
@@ -54,7 +60,7 @@ public class ClientMain {
       ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime()
           .availableProcessors());
 
-      for (String password : getPasswordList()) {
+      for (String password : getPasswords()) {
         File inputFile = getFileToEncrypt();
         RequestPrepareCallable requestPrepareCallable = new RequestPrepareCallable(inputFile,
             password);
@@ -77,11 +83,15 @@ public class ClientMain {
       ArrayList<Sender> senders = new ArrayList<>();
       try {
         for (Request request : requests) {
-          Thread.sleep(getPoissonRandomNumber(0.2)); // 1 request every 5 seconds aka 1/5
+          if (CONCURRENT_REQUESTS) {
+            Thread.sleep(
+                getPoissonSleepTimeForXRequestPerSeconds(
+                    0.07)); // 1 request every 5 seconds aka 1/5
+          }
           Socket socket = new Socket("192.168.1.7", 3333);
           Sender sender = new Sender(request, socket);
           sender.start();
-          if (TEST_TYPE != TEST_REALISTIC) {
+          if (!CONCURRENT_REQUESTS) {
             sender.join();
           }
           senders.add(sender);
@@ -130,7 +140,6 @@ public class ClientMain {
     }
   }
 
-
   public static void getFormattedTimeMeasurements(long timeInMilliseconds, int senderID) {
     long minutes = (timeInMilliseconds / 1000) / 60;
     long seconds = (timeInMilliseconds / 1000) % 60;
@@ -151,31 +160,39 @@ public class ClientMain {
     return k - 1;
   }
 
-  private static String[] getPasswordList() {
+  private static long getPoissonSleepTimeForXRequestPerSeconds(double x) {
+    double u = 1 - RANDOM.nextDouble();
+    double next = -Math.log(u) / x;
+    return (long) (next * 1000);
+  }
+
+  private static String[] getPasswords() {
     if (TEST_TYPE == TEST_PASSWORD) {
       return new String[]{"x", "xy", "xyx", "xyxy", "xyxyz", "xyxyzz"};
     }
     if (TEST_TYPE == TEST_FILES) {
       return new String[]{"xyxy"};
     }
-    return new String[]{
-        "vrmeh", "oiwfm", "hhfsp", "alley", "zvgeo", "anne",
-        "zurich", "jnggw", "ymmpa", "dfkyd", "uihup", "mbabw", "kate",
-        "wgqyl", "pgkbh", "pqdqg", "forum", "pjhek", "pgkiy", "call",
-        "sentra", "smokie", "trinh", "xgvgd", "ghihv", "jeqnb", "rico",
-        "nbkij", "diane", "xqtfg", "tcluo", "ewddr", "aefqd", "yaya",
-        "kinky", "sbhba", "zjpof", "lrfft", "inyqc", "kngfg", "berry",
-        "mesdr", "lpsok", "gvaox", "fmzsh", "blnlo", "lillie", "ultra",
-        "kkbnb", "umgtf", "lksty", "dogboy", "qasiz", "manga", "hugo",
-        "fnlbi", "nsene", "wgpwd", "ixumt", "perry", "pmrho", "farm",
-        "amasz", "pszbw", "miffs", "qahfr", "malone", "bppmn",
-        "safety", "saqfs", "ybuxx", "qckwd", "sparky", "volvo", "paco"
-    };
+    if (passwords == null) {
+      loadPasswords();
+    }
+    return passwords;
+  }
+
+  public static void loadPasswords() {
+    try (InputStream in = ClientMain.class.getClassLoader().getResourceAsStream("passwords.txt")) {
+      assert in != null;
+      passwords =
+          new BufferedReader(new InputStreamReader(in,
+              StandardCharsets.UTF_8)).lines().collect(Collectors.toList()).toArray(String[]::new);
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
   }
 
   private static String getRequestLabel(int i) {
     if (TEST_TYPE == TEST_PASSWORD) {
-      return getPasswordList()[i];
+      return getPasswords()[i];
     }
     if (TEST_TYPE == TEST_FILES) {
       return getFileToEncrypt().getName();
